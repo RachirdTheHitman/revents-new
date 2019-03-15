@@ -1,4 +1,5 @@
 import moment from "moment";
+import cuid from 'cuid';
 import { toastr } from "react-redux-toastr";
 
 export const updateProfile = user => async (
@@ -22,12 +23,13 @@ export const updateProfile = user => async (
 
 export const uploadProfileImage = (file, fileName) => 
   async (dispatch, getState, {getFirebase, getFirestore}) => {
+    const imageName = cuid();
     const firebase = getFirebase();
     const firestore = getFirestore();
     const user = firebase.auth().currentUser;
     const path = `${user.uid}/user_images`;
     const options = {
-      name: fileName
+      name: imageName
     }
     try {
       // upload the file to firebase storage
@@ -51,11 +53,29 @@ export const uploadProfileImage = (file, fileName) =>
         doc: user.uid,
         subcollections: [{collection: 'photos'}]
       }, {
-        name: fileName,
+        name: imageName,
         url: downloadURL
       })
     } catch (error) {
       console.log(error);
       throw new Error('Problem uploding photo');
+    }
+  }
+
+export const deletePhoto = (photo) => 
+  async (dispatch, getState, {getFirebase, getFirestore}) => {
+    const firebase = getFirebase();
+    const firestore = getFirestore();
+    const user = firebase.auth().currentUser;
+    try {
+      await firebase.deleteFile(`${user.uid}/user_images/${photo.name}`);
+      await firestore.delete({
+        collection: 'users',
+        doc: user.uid,
+        subcollections: [{collection: 'photo', doc: photo.id}]
+      })
+    } catch (error) {
+      console.log(error);
+      throw new Error('Problem deleting the photo');
     }
   }
